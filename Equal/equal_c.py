@@ -33,18 +33,26 @@ circuit.X(1, 'INVX1', 'y', 'a', 'VDD', 'VSS')
 simulator = circuit.simulator(temperature=25, nominal_temperature=25)
 ac_analysis = simulator.ac(start_frequency=1@u_Hz, stop_frequency=1@u_GHz, number_of_points=1000, variation='dec')
 
-# 提取输入电容
-v_in = np.abs(np.array([ac_analysis['a'].as_ndarray()]))
-i_in = np.abs(np.array([ac_analysis['Vpulse'].as_ndarray()]))
+print("Nodes:")
+for node in ac_analysis.nodes:
+    print(f'{node}: {float(ac_analysis[node]):.4f} V')
 
-c_in = i_in / (2 * np.pi * ac_analysis.frequency.as_ndarray() * v_in)
+print("\nBranches:")
+for branch in ac_analysis.branches:
+    print(f'{branch}: {float(ac_analysis[branch]):.10f} A')
 
-# 绘制等效电容曲线
-plt.figure()
-plt.semilogx(ac_analysis.frequency, c_in[0], label='C_in')
-plt.xlabel('Frequency [Hz]')
-plt.ylabel('Capacitance [F]')
-plt.title('Equivalent Capacitance vs Frequency')
-plt.legend()
-plt.grid(True)
-plt.show()
+# # 提取输入电容
+# v_in = np.abs(np.array([ac_analysis['a'].as_ndarray()]))
+# i_in = np.abs(np.array([ac_analysis['Vpulse'].as_ndarray()]))
+
+# c_in = i_in / (2 * np.pi * ac_analysis.frequency.as_ndarray() * v_in)
+
+# # 绘制等效电容曲线
+# plt.figure()
+# plt.semilogx(ac_analysis.frequency, c_in[0], label='C_in')
+# plt.xlabel('Frequency [Hz]')
+# plt.ylabel('Capacitance [F]')
+# plt.title('Equivalent Capacitance vs Frequency')
+# plt.legend()
+# plt.grid(True)
+# plt.show()

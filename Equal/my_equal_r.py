@@ -23,9 +23,9 @@ circuit.V(1, 'VDD', circuit.gnd, V_dd)
 circuit.V(2, 'VSS', circuit.gnd, 0 @u_V)
 
 # 定义输入信号
-circuit.PulseVoltageSource('Vin', 'a', circuit.gnd, initial_value=0 @u_V, pulsed_value=V_dd, 
-                           delay_time=0 @u_ns, rise_time=1 @u_ns, fall_time=1 @u_ns, pulse_width=20 @u_ns, period=40 @u_ns)
-# circuit.V('Vin', 'a', circuit.gnd, V_dd)
+# circuit.PulseVoltageSource('Vpulse', 'a', circuit.gnd, initial_value=0 @u_V, pulsed_value=V_dd, 
+#                            delay_time=0 @u_ns, rise_time=1 @u_ns, fall_time=1 @u_ns, pulse_width=20 @u_ns, period=40 @u_ns)
+circuit.V('Vin', 'a', circuit.gnd, V_dd)
 # 定义门
 circuit.X(1, 'INVX1', 'y', 'a', 'VDD', 'VSS')
 
@@ -41,12 +41,12 @@ print("\nBranches:")
 for branch in dc_analysis.branches:
     print(f'{branch}: {float(dc_analysis[branch]):.10f} A')
 
-# # 获取电压和电流
-# v_out = float(dc_analysis['y'].value)
-# v_in = float(dc_analysis['a'].value)
-# i_in = float(dc_analysis['vin'].branch)
+# 获取电压和电流
+v_out = float(dc_analysis['y'])
+v_in = float(dc_analysis['a'])
+i_in = float(dc_analysis['vvin'])
 
-# # 计算等效电阻
-# r_eq = (v_in - v_out) / i_in
+# 计算等效电阻
+r_eq = (v_in - v_out) / i_in
 
-# print(f'等效电阻为: {r_eq} Ohm')
+print(f'等效电阻为: {r_eq} Ohm')
