@@ -22,16 +22,8 @@ def parse_arguments():
     parser.add_argument('--T_swi_step', type=float, default=1.0, help='Step value of transition time')
     parser.add_argument('--T_pulse', type=float, default=20, help='Value of pulse time')
     parser.add_argument('--T_period', type=float, default=40, help='Value of period time')
-    parser.add_argument('--V_1_up', type=float, default=0.18, help='Voltage when V=0.1*V_dd')
-    parser.add_argument('--V_3_up', type=float, default=0.54, help='Voltage when 0.3*T_swi')
-    parser.add_argument('--V_5_up', type=float, default=0.9, help='Voltage when 0.5*T_swi')
-    parser.add_argument('--V_7_up', type=float, default=1.26, help='Voltage when 0.7*T_swi')
-    parser.add_argument('--V_9_up', type=float, default=1.62, help='Voltage when 0.9*T_swi')
-    parser.add_argument('--V_1_down', type=float, default=1.62, help='Voltage when 1.1*T_swi+T_pulse')
-    parser.add_argument('--V_3_down', type=float, default=1.26, help='Voltage when 1.3*T_swi+T_pulse')
-    parser.add_argument('--V_5_down', type=float, default=0.9, help='Voltage when 1.5*T_swi+T_pulse')
-    parser.add_argument('--V_7_down', type=float, default=0.54, help='Voltage when 1.7*T_swi+T_pulse')
-    parser.add_argument('--V_9_down', type=float, default=0.18, help='Voltage when 1.9*T_swi+T_pulse')
+    parser.add_argument('--Vl_trans_up', type=float, nargs=5, default=[0.18, 0.54, 0.9, 1.26, 1.62], help='Voltages for up transitions at 0.1*V_dd, 0.3*T_swi, 0.5*T_swi, 0.7*T_swi, 0.9*T_swi')
+    parser.add_argument('--Vl_trans_down', type=float, nargs=5, default=[1.62, 1.26, 0.9, 0.54, 0.18], help='Voltages for down transitions at 1.1*T_swi+T_pulse, 1.3*T_swi+T_pulse, 1.5*T_swi+T_pulse, 1.7*T_swi+T_pulse, 1.9*T_swi+T_pulse')
     return parser.parse_args()
 
 def define_variables(args):
@@ -50,18 +42,8 @@ def define_variables(args):
     T_swi_step = args.T_swi_step @ u_ns
     T_pulse = args.T_pulse @ u_ns
     T_period = args.T_period @ u_ns
-    V_1_up = args.V_1_up @ u_V
-    V_3_up = args.V_3_up @ u_V
-    V_5_up = args.V_5_up @ u_V
-    V_7_up = args.V_7_up @ u_V
-    V_9_up = args.V_9_up @ u_V
-    V_1_down = args.V_1_down @ u_V
-    V_3_down = args.V_3_down @ u_V
-    V_5_down = args.V_5_down @ u_V
-    V_7_down = args.V_7_down @ u_V
-    V_9_down = args.V_9_down @ u_V
-    Vl_trans_up = [V_1_up, V_3_up, V_5_up, V_7_up, V_9_up]
-    Vl_trans_down = [V_1_down, V_3_down, V_5_down, V_7_down, V_9_down]
+    Vl_trans_up = args.Vl_trans_up
+    Vl_trans_down = args.Vl_trans_down
 
     # 生成变量范围
     V_dd_range = np.arange(V_dd_start, V_dd_end + V_dd_step, V_dd_step)
@@ -100,32 +82,21 @@ def create_circuit(V_dd, R_out, C_out, T_swi, T_pulse, T_period, Gate, Vl_trans_
     circuit.R('out', 'y', 'out', R_out)
     circuit.C('out', 'out', circuit.gnd, C_out)
 
-    V_1_up = Vl_trans_up[0]
-    V_3_up = Vl_trans_up[1]
-    V_5_up = Vl_trans_up[2]
-    V_7_up = Vl_trans_up[3]
-    V_9_up = Vl_trans_up[4]
-    V_1_down = Vl_trans_down[0]
-    V_3_down = Vl_trans_down[1]
-    V_5_down = Vl_trans_down[2]
-    V_7_down = Vl_trans_down[3]
-    V_9_down = Vl_trans_down[4]
-
     circuit.PieceWiseLinearVoltageSource('Vpulse', 'a', circuit.gnd,
                                         values=[
                                                 (0, 0), 
-                                                (0.1*T_swi, V_1_up),
-                                                (0.3*T_swi, V_3_up),
-                                                (0.5*T_swi, V_5_up),
-                                                (0.7*T_swi, V_7_up),
-                                                (0.9*T_swi, V_9_up),
+                                                (0.1*T_swi, Vl_trans_up[0]),
+                                                (0.3*T_swi, Vl_trans_up[1]),
+                                                (0.5*T_swi, Vl_trans_up[2]),
+                                                (0.7*T_swi, Vl_trans_up[3]),
+                                                (0.9*T_swi, Vl_trans_up[4]),
                                                 (T_swi, V_dd), 
                                                 (T_swi+T_pulse, V_dd), 
-                                                (1.1*T_swi+T_pulse, V_1_down),
-                                                (1.3*T_swi+T_pulse, V_3_down),
-                                                (1.5*T_swi+T_pulse, V_5_down),
-                                                (1.7*T_swi+T_pulse, V_7_down),
-                                                (1.9*T_swi+T_pulse, V_9_down),                                                
+                                                (1.1*T_swi+T_pulse, Vl_trans_down[0]),
+                                                (1.3*T_swi+T_pulse, Vl_trans_down[1]),
+                                                (1.5*T_swi+T_pulse, Vl_trans_down[2]),
+                                                (1.7*T_swi+T_pulse, Vl_trans_down[3]),
+                                                (1.9*T_swi+T_pulse, Vl_trans_down[4]),                                                
                                                 (2*T_swi+T_pulse, 0), 
                                                 (2*T_swi+T_period, 0)
                                                 ]
@@ -142,19 +113,14 @@ def create_circuit(V_dd, R_out, C_out, T_swi, T_pulse, T_period, Gate, Vl_trans_
 
     return circuit
 
-def calculate_time(time, signal, T_swi, T_pulse):
-    Vc_1_up = np.where(time >= 0.1*T_swi)[0][0]
-    Vc_3_up = np.where(time >= 0.3*T_swi)[0][0]
-    Vc_5_up = np.where(time >= 0.5*T_swi)[0][0]
-    Vc_7_up = np.where(time >= 0.7*T_swi)[0][0]
-    Vc_9_up = np.where(time >= 0.9*T_swi)[0][0]
-    Vc_1_down = np.where(time >= 1.1*T_swi+T_pulse)[0][0]
-    Vc_3_down = np.where(time >= 1.3*T_swi+T_pulse)[0][0]
-    Vc_5_down = np.where(time >= 1.5*T_swi+T_pulse)[0][0]
-    Vc_7_down = np.where(time >= 1.7*T_swi+T_pulse)[0][0]
-    Vc_9_down = np.where(time >= 1.9*T_swi+T_pulse)[0][0]
-    Vc_trans_up = [signal[Vc_1_up], signal[Vc_3_up], signal[Vc_5_up], signal[Vc_7_up], signal[Vc_9_up]]
-    Vc_trans_down = [signal[Vc_1_down], signal[Vc_3_down], signal[Vc_5_down], signal[Vc_7_down], signal[Vc_9_down]]
+def get_voltage(time, signal, T_swi, T_pulse):
+    # 分别在这些时间节点记录电压值
+    up_factors = [0.1, 0.3, 0.5, 0.7, 0.9]
+    down_factors = [1.1, 1.3, 1.5, 1.7, 1.9]
+    
+    Vc_trans_up = [signal[np.where(time >= factor * T_swi)[0][0]] for factor in up_factors]
+    Vc_trans_down = [signal[np.where(time >= factor * T_swi + T_pulse)[0][0]] for factor in down_factors]
+    
     return Vc_trans_up, Vc_trans_down
 
 def main():
@@ -182,7 +148,7 @@ def main():
                     tpHL = format(tpHL, '.4e') if tpHL is not None else 'None'
                     
                     # 计算过渡电压
-                    Vc_trans_up, Vc_trans_down = calculate_time(np.array(analysis.time), np.array(analysis['a']), T_swi, T_pulse)
+                    Vc_trans_up, Vc_trans_down = get_voltage(np.array(analysis.time), np.array(analysis['a']), T_swi, T_pulse)
 
                     # 输出结果
                     result = {
