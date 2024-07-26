@@ -10,8 +10,8 @@ from PySpice.Unit import *
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Gate Simulation Parameters')
     parser.add_argument('--gate', type=str, default='INVX1', help='Gate type')
-    parser.add_argument('--V_dd_start', type=float, default=1.8, help='Start value of voltage')
-    parser.add_argument('--V_dd_end', type=float, default=2.1, help='End value of voltage')
+    parser.add_argument('--V_dd_start', type=float, default=2.1, help='Start value of voltage')
+    parser.add_argument('--V_dd_end', type=float, default=2.4, help='End value of voltage')
     parser.add_argument('--V_dd_step', type=float, default=0.3, help='Step value of voltage')
     parser.add_argument('--R_out_start', type=float, default=1.0, help='Start value of load resistance')
     parser.add_argument('--R_out_end', type=float, default=1.1, help='End value of load resistance')
@@ -24,8 +24,8 @@ def parse_arguments():
     parser.add_argument('--T_swi_step', type=float, default=1.0, help='Step value of transition time')
     parser.add_argument('--T_pulse', type=float, default=10, help='Value of pulse time')
     parser.add_argument('--T_period', type=float, default=40, help='Value of period time')
-    parser.add_argument('--Vl_trans_up', type=float, nargs=5, default=[0.18, 0.54, 0.9, 1.26, 1.62], help='Voltages for up transitions at 0.1*V_dd, 0.3*T_swi, 0.5*T_swi, 0.7*T_swi, 0.9*T_swi')
-    parser.add_argument('--Vl_trans_down', type=float, nargs=5, default=[1.62, 1.26, 0.9, 0.54, 0.18], help='Voltages for down transitions at 1.1*T_swi+T_pulse, 1.3*T_swi+T_pulse, 1.5*T_swi+T_pulse, 1.7*T_swi+T_pulse, 1.9*T_swi+T_pulse')
+    parser.add_argument('--Vl_trans_up', type=float, nargs=5, default=[0.21@ u_V, 0.63@ u_V, 1.05@ u_V, 1.47@ u_V, 1.89@ u_V], help='Voltages for up transitions at 0.1*V_dd, 0.3*T_swi, 0.5*T_swi, 0.7*T_swi, 0.9*T_swi')
+    parser.add_argument('--Vl_trans_down', type=float, nargs=5, default=[1.89@ u_V, 1.47@ u_V, 1.05@ u_V, 0.63@ u_V, 0.21@ u_V], help='Voltages for down transitions at 1.1*T_swi+T_pulse, 1.3*T_swi+T_pulse, 1.5*T_swi+T_pulse, 1.7*T_swi+T_pulse, 1.9*T_swi+T_pulse')
     return parser.parse_args()
 
 def define_variables(args):

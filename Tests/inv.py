@@ -23,6 +23,10 @@ T_swi = 5 @ u_ns
 circuit.V(1, 'VDD', circuit.gnd, V_dd)
 circuit.V(2, 'VSS', circuit.gnd, 0 @u_V)
 
+# 负载端的RC
+circuit.R('out', 'y', 'out', R_out)
+circuit.C('out', 'out', circuit.gnd, C_out)
+
 # 定义输入信号
 V_1_up = 0.1*V_dd
 V_3_up = 0.3*V_dd
@@ -92,14 +96,12 @@ def calculate_propagation_delay(time, in_signal, out_signal, threshold):
     if len(in_fall_times) > 0 and len(out_rise_times) > 0:
         tpHL = out_rise_times[0][0] - in_fall_times[0][0]
 
-    print(tpLH)
-
     return tpLH, tpHL, in_rise_times, out_rise_times, in_fall_times, out_fall_times
 
 tpLH, tpHL, in_rise_times, out_rise_times, in_fall_times, out_fall_times = calculate_propagation_delay(np.array(analysis.time), np.array(analysis['a']), np.array(analysis['y']), float(V_dd)/2)
 
-print(tpLH, "ns")
-print(tpHL, "ns")
+print(tpLH)
+print(tpHL)
 
 figure, ax = plt.subplots(figsize=(10, 6))
 plot(analysis['a'], axis=ax, label='V(in1)')
