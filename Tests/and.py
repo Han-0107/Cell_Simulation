@@ -61,6 +61,7 @@ circuit.PieceWiseLinearVoltageSource('Vpulse', 'a', circuit.gnd,
                                                 ]
                                     )
 circuit.VoltageSource(3, 'b', circuit.gnd, V_dd)
+
 # 定义门
 circuit.X(1, 'AND2X1', 'y', 'a', 'b', 'VDD', 'VSS')
 

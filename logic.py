@@ -24,8 +24,8 @@ def parse_arguments():
     parser.add_argument('--T_swi_step', type=float, default=1.0, help='Step value of transition time')
     parser.add_argument('--T_pulse', type=float, default=10, help='Value of pulse time')
     parser.add_argument('--T_period', type=float, default=40, help='Value of period time')
-    parser.add_argument('--Vl_trans_up', type=float, nargs=5, default=[0.21@ u_V, 0.63@ u_V, 1.05@ u_V, 1.47@ u_V, 1.89@ u_V], help='Voltages for up transitions at 0.1*V_dd, 0.3*T_swi, 0.5*T_swi, 0.7*T_swi, 0.9*T_swi')
-    parser.add_argument('--Vl_trans_down', type=float, nargs=5, default=[1.89@ u_V, 1.47@ u_V, 1.05@ u_V, 0.63@ u_V, 0.21@ u_V], help='Voltages for down transitions at 1.1*T_swi+T_pulse, 1.3*T_swi+T_pulse, 1.5*T_swi+T_pulse, 1.7*T_swi+T_pulse, 1.9*T_swi+T_pulse')
+    parser.add_argument('--Vl_trans_up', type=float, nargs=5, default=[0.21, 0.63, 1.05, 1.47, 1.89], help='Voltages for up transitions at 0.1*V_dd, 0.3*T_swi, 0.5*T_swi, 0.7*T_swi, 0.9*T_swi')
+    parser.add_argument('--Vl_trans_down', type=float, nargs=5, default=[1.89, 1.47, 1.05, 0.63, 0.21], help='Voltages for down transitions at 1.1*T_swi+T_pulse, 1.3*T_swi+T_pulse, 1.5*T_swi+T_pulse, 1.7*T_swi+T_pulse, 1.9*T_swi+T_pulse')
     return parser.parse_args()
 
 def define_variables(args):
