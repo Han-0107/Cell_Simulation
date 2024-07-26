@@ -118,7 +118,7 @@ for t, v in in_fall_times:
 for t, v in out_fall_times:
     ax.plot(t, v, 'mx', label='V(out) down')  # 品红色表示输出下降沿
 
-plt.title('Gate Transient Analysis')
+plt.title('AND Gate Transient Analysis')
 plt.xlabel('Time [s]')
 plt.ylabel('Voltage [V]')
 plt.legend()
