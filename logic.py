@@ -13,19 +13,16 @@ def parse_arguments():
     parser.add_argument('--V_dd_start', type=float, default=2.1, help='Start value of voltage')
     parser.add_argument('--V_dd_end', type=float, default=2.4, help='End value of voltage')
     parser.add_argument('--V_dd_step', type=float, default=0.3, help='Step value of voltage')
-    parser.add_argument('--R_out_start', type=float, default=1.0, help='Start value of load resistance')
-    parser.add_argument('--R_out_end', type=float, default=1.1, help='End value of load resistance')
-    parser.add_argument('--R_out_step', type=float, default=0.1, help='Step value of load resistance')
-    parser.add_argument('--C_out_start', type=float, default=1.0, help='Start value of load capacitance')
-    parser.add_argument('--C_out_end', type=float, default=1.1, help='End value of load capacitance')
-    parser.add_argument('--C_out_step', type=float, default=0.1, help='Step value of load capacitance')
-    parser.add_argument('--T_swi_start', type=float, default=5.0, help='Start value of transition time')
-    parser.add_argument('--T_swi_end', type=float, default=6.0, help='End value of transition time')
-    parser.add_argument('--T_swi_step', type=float, default=1.0, help='Step value of transition time')
+    parser.add_argument('--Cap_out_start', type=float, default=1.0, help='Start value of load capacitance')
+    parser.add_argument('--Cap_out_end', type=float, default=1.1, help='End value of load capacitance')
+    parser.add_argument('--Cap_out_step', type=float, default=0.1, help='Step value of load capacitance')
+    parser.add_argument('--Trans_start', type=float, default=5.0, help='Start value of transition time')
+    parser.add_argument('--Trans_end', type=float, default=6.0, help='End value of transition time')
+    parser.add_argument('--Trans_step', type=float, default=1.0, help='Step value of transition time')
     parser.add_argument('--T_pulse', type=float, default=10, help='Value of pulse time')
     parser.add_argument('--T_period', type=float, default=40, help='Value of period time')
-    parser.add_argument('--Vl_trans_up', type=float, nargs=5, default=[0.21, 0.63, 1.05, 1.47, 1.89], help='Voltages for up transitions at 0.1*V_dd, 0.3*T_swi, 0.5*T_swi, 0.7*T_swi, 0.9*T_swi')
-    parser.add_argument('--Vl_trans_down', type=float, nargs=5, default=[1.89, 1.47, 1.05, 0.63, 0.21], help='Voltages for down transitions at 1.1*T_swi+T_pulse, 1.3*T_swi+T_pulse, 1.5*T_swi+T_pulse, 1.7*T_swi+T_pulse, 1.9*T_swi+T_pulse')
+    parser.add_argument('--Vi_trans_up', type=float, nargs=5, default=[0.21, 0.63, 1.05, 1.47, 1.89], help='Voltages for up transitions at 0.1*V_dd, 0.3*Trans, 0.5*Trans, 0.7*Trans, 0.9*Trans')
+    parser.add_argument('--Vi_trans_down', type=float, nargs=5, default=[1.89, 1.47, 1.05, 0.63, 0.21], help='Voltages for down transitions at 1.1*Trans+T_pulse, 1.3*Trans+T_pulse, 1.5*Trans+T_pulse, 1.7*Trans+T_pulse, 1.9*Trans+T_pulse')
     return parser.parse_args()
 
 def define_variables(args):
@@ -33,27 +30,23 @@ def define_variables(args):
     V_dd_start = args.V_dd_start @ u_V
     V_dd_end = args.V_dd_end @ u_V
     V_dd_step = args.V_dd_step @ u_V
-    R_out_start = args.R_out_start @ u_Ohm
-    R_out_end = args.R_out_end @ u_Ohm
-    R_out_step = args.R_out_step @ u_Ohm
-    C_out_start = args.C_out_start @ u_pF
-    C_out_end = args.C_out_end @ u_pF
-    C_out_step = args.C_out_step @ u_pF
-    T_swi_start = args.T_swi_start @ u_ns
-    T_swi_end = args.T_swi_end @ u_ns
-    T_swi_step = args.T_swi_step @ u_ns
+    Cap_out_start = args.Cap_out_start @ u_pF
+    Cap_out_end = args.Cap_out_end @ u_pF
+    Cap_out_step = args.Cap_out_step @ u_pF
+    Trans_start = args.Trans_start @ u_ns
+    Trans_end = args.Trans_end @ u_ns
+    Trans_step = args.Trans_step @ u_ns
     T_pulse = args.T_pulse @ u_ns
     T_period = args.T_period @ u_ns
-    Vl_trans_up = args.Vl_trans_up
-    Vl_trans_down = args.Vl_trans_down
+    Vi_trans_up = args.Vi_trans_up
+    Vi_trans_down = args.Vi_trans_down
 
     # 生成变量范围
     V_dd_range = np.arange(V_dd_start, V_dd_end + V_dd_step, V_dd_step)
-    R_out_range = np.arange(R_out_start, R_out_end + R_out_step, R_out_step)
-    C_out_range = np.arange(C_out_start, C_out_end + C_out_step, C_out_step)
-    T_swi_range = np.arange(T_swi_start, T_swi_end + T_swi_step, T_swi_step)
+    Cap_out_range = np.arange(Cap_out_start, Cap_out_end + Cap_out_step, Cap_out_step)
+    Trans_range = np.arange(Trans_start, Trans_end + Trans_step, Trans_step)
 
-    return V_dd_range, R_out_range, C_out_range, T_swi_range, T_pulse, T_period, Vl_trans_up, Vl_trans_down
+    return V_dd_range, Cap_out_range, Trans_range, T_pulse, T_period, Vi_trans_up, Vi_trans_down
 
 def calculate_propagation_delay(time, in_signal, out_signal, threshold, gate):
     in_rise_times = []
@@ -93,7 +86,7 @@ def calculate_propagation_delay(time, in_signal, out_signal, threshold, gate):
 
     return tpLH, tpHL
 
-def create_circuit(V_dd, R_out, C_out, T_swi, T_pulse, T_period, gate, Vl_trans_up, Vl_trans_down):
+def create_circuit(V_dd, Cap_out, Trans, T_pulse, T_period, gate, Vi_trans_up, Vi_trans_down):
     # 创建电路
     circuit = Circuit('Gate for Experiment')
 
@@ -106,26 +99,26 @@ def create_circuit(V_dd, R_out, C_out, T_swi, T_pulse, T_period, gate, Vl_trans_
     circuit.V(2, 'VSS', circuit.gnd, 0 @ u_V)
 
     # 负载端的RC
-    circuit.R('out', 'y', 'out', R_out)
-    circuit.C('out', 'out', circuit.gnd, C_out)
+    # circuit.R('out', 'y', 'out', R_out)
+    circuit.C('out', 'y', circuit.gnd, Cap_out)
 
     circuit.PieceWiseLinearVoltageSource('Vpulse', 'a', circuit.gnd,
                                         values=[
                                                 (0, 0), 
-                                                (0.1*T_swi, Vl_trans_up[0]),
-                                                (0.3*T_swi, Vl_trans_up[1]),
-                                                (0.5*T_swi, Vl_trans_up[2]),
-                                                (0.7*T_swi, Vl_trans_up[3]),
-                                                (0.9*T_swi, Vl_trans_up[4]),
-                                                (T_swi, V_dd), 
-                                                (T_swi+T_pulse, V_dd), 
-                                                (1.1*T_swi+T_pulse, Vl_trans_down[0]),
-                                                (1.3*T_swi+T_pulse, Vl_trans_down[1]),
-                                                (1.5*T_swi+T_pulse, Vl_trans_down[2]),
-                                                (1.7*T_swi+T_pulse, Vl_trans_down[3]),
-                                                (1.9*T_swi+T_pulse, Vl_trans_down[4]),                                                
-                                                (2*T_swi+T_pulse, 0), 
-                                                (2*T_swi+T_period, 0)
+                                                (0.1*Trans, Vi_trans_up[0]),
+                                                (0.3*Trans, Vi_trans_up[1]),
+                                                (0.5*Trans, Vi_trans_up[2]),
+                                                (0.7*Trans, Vi_trans_up[3]),
+                                                (0.9*Trans, Vi_trans_up[4]),
+                                                (Trans, V_dd), 
+                                                (Trans+T_pulse, V_dd), 
+                                                (1.1*Trans+T_pulse, Vi_trans_down[0]),
+                                                (1.3*Trans+T_pulse, Vi_trans_down[1]),
+                                                (1.5*Trans+T_pulse, Vi_trans_down[2]),
+                                                (1.7*Trans+T_pulse, Vi_trans_down[3]),
+                                                (1.9*Trans+T_pulse, Vi_trans_down[4]),                                                
+                                                (2*Trans+T_pulse, 0), 
+                                                (2*Trans+T_period, 0)
                                                 ]
                                         )
     
@@ -140,59 +133,57 @@ def create_circuit(V_dd, R_out, C_out, T_swi, T_pulse, T_period, gate, Vl_trans_
 
     return circuit
 
-def get_voltage(time, signal, T_swi, T_pulse):
+def get_voltage(time, signal, Trans, T_pulse, V_dd):
     # 分别在这些时间节点记录电压值
     up_factors = [0.1, 0.3, 0.5, 0.7, 0.9]
     down_factors = [1.1, 1.3, 1.5, 1.7, 1.9]
     
-    Vc_trans_up = [signal[np.where(time >= factor * T_swi)[0][0]] for factor in up_factors]
-    Vc_trans_down = [signal[np.where(time >= factor * T_swi + T_pulse)[0][0]] for factor in down_factors]
-    
-    return Vc_trans_up, Vc_trans_down
+    Vo_trans_up = [signal[np.where(time >= factor * Trans)[0][0]] for factor in up_factors]
+    Vo_trans_down = [signal[np.where(time >= factor * Trans + T_pulse)[0][0]] for factor in down_factors]
+
+    return Vo_trans_up, Vo_trans_down
 
 def main():
     args = parse_arguments()
-    V_dd_range, R_out_range, C_out_range, T_swi_range, T_pulse, T_period, Vl_trans_up, Vl_trans_down = define_variables(args)
+    V_dd_range, Cap_out_range, Trans_range, T_pulse, T_period, Vi_trans_up, Vi_trans_down = define_variables(args)
 
     results = []
-    Vl_trans_up_floats = [float(value) for value in Vl_trans_up]
-    Vl_trans_down_floats = [float(value) for value in Vl_trans_down]
+    Vi_trans_up_floats = [float(value) for value in Vi_trans_up]
+    Vi_trans_down_floats = [float(value) for value in Vi_trans_down]
     
     for V_dd in V_dd_range:
-        for R_out in R_out_range:
-            for C_out in C_out_range:
-                for T_swi in T_swi_range:
+        for Cap_out in Cap_out_range:
+            for Trans in Trans_range:
 
-                    circuit = create_circuit(V_dd, R_out, C_out, T_swi, T_pulse, T_period, args.gate, Vl_trans_up, Vl_trans_down)
+                circuit = create_circuit(V_dd, Cap_out, Trans, T_pulse, T_period, args.gate, Vi_trans_up, Vi_trans_down)
                     
-                    # 进行瞬态仿真
-                    simulator = circuit.simulator(temperature=25, nominal_temperature=25)
-                    analysis = simulator.transient(step_time=0.001 @ u_ns, end_time=45 @ u_ns)
+                # 进行瞬态仿真
+                simulator = circuit.simulator(temperature=25, nominal_temperature=25)
+                analysis = simulator.transient(step_time=0.001 @ u_ns, end_time=45 @ u_ns)
                     
-                    # 计算延时
-                    tpLH, tpHL = calculate_propagation_delay(np.array(analysis.time), np.array(analysis['a']), np.array(analysis['y']), float(V_dd)/2, args.gate)
-                    tpLH = format(tpLH, '.4e') if tpLH is not None else 'None'
-                    tpHL = format(tpHL, '.4e') if tpHL is not None else 'None'
+                # 计算延时
+                tpLH, tpHL = calculate_propagation_delay(np.array(analysis.time), np.array(analysis['a']), np.array(analysis['y']), float(V_dd)/2, args.gate)
+                tpLH = format(tpLH, '.4e') if tpLH is not None else 'None'
+                tpHL = format(tpHL, '.4e') if tpHL is not None else 'None'
                     
-                    # 计算过渡电压
-                    Vc_trans_up, Vc_trans_down = get_voltage(np.array(analysis.time), np.array(analysis['a']), T_swi, T_pulse)
+                # 计算过渡电压
+                Vo_trans_up, Vo_trans_down = get_voltage(np.array(analysis.time), np.array(analysis['a']), Trans, T_pulse, V_dd)
 
-                    # 输出结果
-                    result = {
-                        "gate": args.gate,
-                        "V_dd": V_dd.value,
-                        "R_out": R_out.value,
-                        "C_out": C_out.value,
-                        "T_swi": T_swi.value,
-                        "Vl_trans_up": Vl_trans_up_floats,
-                        "Vl_trans_down": Vl_trans_down_floats,
-                        "Vc_trans_up": Vc_trans_up,
-                        "Vc_trans_down": Vc_trans_down,
-                        "tpLH": tpLH,
-                        "tpHL": tpHL
-                    }
-                    results.append(result)
-                    print(result)
+                # 输出结果
+                result = {
+                            "gate": args.gate,
+                            "V_dd": V_dd.value,
+                            "Cap_out": Cap_out.value,
+                            "Trans": Trans.value,
+                            "Vi_trans_up": Vi_trans_up_floats,
+                            "Vi_trans_down": Vi_trans_down_floats,
+                            "Vo_trans_up": Vo_trans_up,
+                            "Vo_trans_down": Vo_trans_down,
+                            "tpLH": tpLH,
+                            "tpHL": tpHL
+                        }
+                results.append(result)
+                print(result)
 
     with open(f"./Results/{args.gate}_delay.json", 'w') as json_file:
         json.dump(results, json_file, indent=4)

@@ -13,9 +13,6 @@ circuit.include('/home/yaohui/Research/PySpice/Libs/cells.sp')
 circuit.include('/home/yaohui/Research/PySpice/Libs/gpdk45nm.m')
 
 V_dd  = 2.1 @u_V
-R_in  = 1 @u_Ohm
-C_in  = 1 @u_pF
-R_out = 1 @u_Ohm
 C_out = 1 @u_pF
 T_swi = 5 @ u_ns
 
@@ -24,8 +21,8 @@ circuit.V(1, 'VDD', circuit.gnd, V_dd)
 circuit.V(2, 'VSS', circuit.gnd, 0 @u_V)
 
 # 负载端的RC
-circuit.R('out', 'y', 'out', R_out)
-circuit.C('out', 'out', circuit.gnd, C_out)
+# circuit.R('out', 'y', 'out', R_out)
+circuit.C('out', 'y', circuit.gnd, C_out)
 
 # 定义输入信号
 V_1_up = 0.1*V_dd
