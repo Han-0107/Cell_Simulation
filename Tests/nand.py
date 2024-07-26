@@ -6,7 +6,7 @@ from PySpice.Unit import *
 import numpy as np
 
 # 创建电路
-circuit = Circuit('INV')
+circuit = Circuit('NAND')
 
 # 包含 SPICE 模型库
 circuit.include('/home/yaohui/Research/PySpice/Libs/cells.sp')
@@ -60,9 +60,9 @@ circuit.PieceWiseLinearVoltageSource('Vpulse', 'a', circuit.gnd,
                                                 (2*T_swi+T_period, 0)
                                                 ]
                                     )
-
+circuit.VoltageSource(3, 'b', circuit.gnd, V_dd)
 # 定义门
-circuit.X(1, 'INVX1', 'y', 'a', 'VDD', 'VSS')
+circuit.X(1, 'NAND2X1', 'y', 'a', 'b', 'VDD', 'VSS')
 
 # 进行瞬态仿真
 simulator = circuit.simulator(temperature=25, nominal_temperature=25)

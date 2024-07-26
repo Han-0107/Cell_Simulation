@@ -6,7 +6,7 @@ from PySpice.Unit import *
 import numpy as np
 
 # 创建电路
-circuit = Circuit('INV')
+circuit = Circuit('AND')
 
 # 包含 SPICE 模型库
 circuit.include('/home/yaohui/Research/PySpice/Libs/cells.sp')
@@ -60,9 +60,9 @@ circuit.PieceWiseLinearVoltageSource('Vpulse', 'a', circuit.gnd,
                                                 (2*T_swi+T_period, 0)
                                                 ]
                                     )
-
+circuit.VoltageSource(3, 'b', circuit.gnd, V_dd)
 # 定义门
-circuit.X(1, 'INVX1', 'y', 'a', 'VDD', 'VSS')
+circuit.X(1, 'AND2X1', 'y', 'a', 'b', 'VDD', 'VSS')
 
 # 进行瞬态仿真
 simulator = circuit.simulator(temperature=25, nominal_temperature=25)
@@ -89,12 +89,12 @@ def calculate_propagation_delay(time, in_signal, out_signal, threshold):
     tpHL = None
 
     # 计算上升延迟
-    if len(in_rise_times) > 0 and len(out_fall_times) > 0:
-        tpLH = out_fall_times[0][0] - in_rise_times[0][0]
+    if len(in_rise_times) > 0 and len(out_rise_times) > 0:
+        tpLH = out_rise_times[0][0] - in_rise_times[0][0]
     
     # 计算下降延迟
-    if len(in_fall_times) > 0 and len(out_rise_times) > 0:
-        tpHL = out_rise_times[0][0] - in_fall_times[0][0]
+    if len(in_fall_times) > 0 and len(out_fall_times) > 0:
+        tpHL = out_fall_times[0][0] - in_fall_times[0][0]
 
     return tpLH, tpHL, in_rise_times, out_rise_times, in_fall_times, out_fall_times
 

@@ -9,7 +9,7 @@ from PySpice.Unit import *
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Gate Simulation Parameters')
-    parser.add_argument('--gate', type=str, default='INVX1', help='Gate type')
+    parser.add_argument('--gate', type=str, default='NAND2X1', help='Gate type')
     parser.add_argument('--V_dd_start', type=float, default=2.1, help='Start value of voltage')
     parser.add_argument('--V_dd_end', type=float, default=2.4, help='End value of voltage')
     parser.add_argument('--V_dd_step', type=float, default=0.3, help='Step value of voltage')
@@ -74,7 +74,7 @@ def calculate_propagation_delay(time, in_signal, out_signal, threshold, gate):
     tpLH = None
     tpHL = None
 
-    if gate == 'INVX1': # 还要加上其他逻辑门！
+    if gate == 'INVX1' or gate == 'NAND2X1' or gate == 'NOR2X1' or gate == 'XNOR2X1': # 还要加上其他逻辑门！
         # 计算上升延迟
         if len(in_rise_times) > 0 and len(out_fall_times) > 0:
             tpLH = out_fall_times[0][0] - in_rise_times[0][0]
