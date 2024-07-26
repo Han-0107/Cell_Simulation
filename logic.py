@@ -9,16 +9,15 @@ from PySpice.Unit import *
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Gate Simulation Parameters')
-    parser.add_argument('--gate', type=str, default='INVX1', help='Gate type')
+    parser.add_argument('--gate', type=str, default='NAND2X1', help='Gate type')
     parser.add_argument('--V_dd_start', type=float, default=2.1, help='Start value of voltage')
     parser.add_argument('--V_dd_end', type=float, default=2.4, help='End value of voltage')
     parser.add_argument('--V_dd_step', type=float, default=0.3, help='Step value of voltage')
-    parser.add_argument('--Cap_out_start', type=float, default=1.0, help='Start value of load capacitance')
-    parser.add_argument('--Cap_out_end', type=float, default=1.1, help='End value of load capacitance')
-    parser.add_argument('--Cap_out_step', type=float, default=0.1, help='Step value of load capacitance')
-    parser.add_argument('--Trans_start', type=float, default=5.0, help='Start value of transition time')
-    parser.add_argument('--Trans_end', type=float, default=6.0, help='End value of transition time')
-    parser.add_argument('--Trans_step', type=float, default=1.0, help='Step value of transition time')
+    parser.add_argument('--Cap_load_start', type=float, default=0.1, help='Start value of load capacitance')
+    parser.add_argument('--Cap_load_end', type=float, default=0.5, help='End value of load capacitance')
+    parser.add_argument('--Cap_load_step', type=float, default=0.1, help='Step value of load capacitance')
+    parser.add_argument('--Trans_in_up', type=float, default=5.0e-09, help='UP value of transition time')
+    parser.add_argument('--Trans_in_down', type=float, default=5.0e-09, help='Down value of transition time')
     parser.add_argument('--T_pulse', type=float, default=10, help='Value of pulse time')
     parser.add_argument('--T_period', type=float, default=40, help='Value of period time')
     parser.add_argument('--Vi_trans_up', type=float, nargs=5, default=[0.21, 0.63, 1.05, 1.47, 1.89], help='Voltages for up transitions at 0.1*V_dd, 0.3*Trans, 0.5*Trans, 0.7*Trans, 0.9*Trans')
@@ -30,12 +29,11 @@ def define_variables(args):
     V_dd_start = args.V_dd_start @ u_V
     V_dd_end = args.V_dd_end @ u_V
     V_dd_step = args.V_dd_step @ u_V
-    Cap_out_start = args.Cap_out_start @ u_pF
-    Cap_out_end = args.Cap_out_end @ u_pF
-    Cap_out_step = args.Cap_out_step @ u_pF
-    Trans_start = args.Trans_start @ u_ns
-    Trans_end = args.Trans_end @ u_ns
-    Trans_step = args.Trans_step @ u_ns
+    Cap_load_start = args.Cap_load_start @ u_pF
+    Cap_load_end = args.Cap_load_end @ u_pF
+    Cap_load_step = args.Cap_load_step @ u_pF
+    Trans_in_up = args.Trans_in_up @ u_s
+    Trans_in_down = args.Trans_in_down @ u_s
     T_pulse = args.T_pulse @ u_ns
     T_period = args.T_period @ u_ns
     Vi_trans_up = args.Vi_trans_up
@@ -43,10 +41,9 @@ def define_variables(args):
 
     # 生成变量范围
     V_dd_range = np.arange(V_dd_start, V_dd_end + V_dd_step, V_dd_step)
-    Cap_out_range = np.arange(Cap_out_start, Cap_out_end + Cap_out_step, Cap_out_step)
-    Trans_range = np.arange(Trans_start, Trans_end + Trans_step, Trans_step)
+    Cap_load_range = np.arange(Cap_load_start, Cap_load_end + Cap_load_step, Cap_load_step)
 
-    return V_dd_range, Cap_out_range, Trans_range, T_pulse, T_period, Vi_trans_up, Vi_trans_down
+    return V_dd_range, Cap_load_range, Trans_in_up, Trans_in_down, T_pulse, T_period, Vi_trans_up, Vi_trans_down
 
 def calculate_propagation_delay(time, in_signal, out_signal, threshold, gate):
     in_rise_times = []
@@ -86,7 +83,7 @@ def calculate_propagation_delay(time, in_signal, out_signal, threshold, gate):
 
     return tpLH, tpHL
 
-def create_circuit(V_dd, Cap_out, Trans, T_pulse, T_period, gate, Vi_trans_up, Vi_trans_down):
+def create_circuit(V_dd, Cap_load, Trans_in_up, Trans_in_down, T_pulse, T_period, gate, Vi_trans_up, Vi_trans_down):
     # 创建电路
     circuit = Circuit('Gate for Experiment')
 
@@ -100,25 +97,25 @@ def create_circuit(V_dd, Cap_out, Trans, T_pulse, T_period, gate, Vi_trans_up, V
 
     # 负载端的RC
     # circuit.R('out', 'y', 'out', R_out)
-    circuit.C('out', 'y', circuit.gnd, Cap_out)
+    circuit.C('out', 'y', circuit.gnd, Cap_load)
 
     circuit.PieceWiseLinearVoltageSource('Vpulse', 'a', circuit.gnd,
                                         values=[
                                                 (0, 0), 
-                                                (0.1*Trans, Vi_trans_up[0]),
-                                                (0.3*Trans, Vi_trans_up[1]),
-                                                (0.5*Trans, Vi_trans_up[2]),
-                                                (0.7*Trans, Vi_trans_up[3]),
-                                                (0.9*Trans, Vi_trans_up[4]),
-                                                (Trans, V_dd), 
-                                                (Trans+T_pulse, V_dd), 
-                                                (1.1*Trans+T_pulse, Vi_trans_down[0]),
-                                                (1.3*Trans+T_pulse, Vi_trans_down[1]),
-                                                (1.5*Trans+T_pulse, Vi_trans_down[2]),
-                                                (1.7*Trans+T_pulse, Vi_trans_down[3]),
-                                                (1.9*Trans+T_pulse, Vi_trans_down[4]),                                                
-                                                (2*Trans+T_pulse, 0), 
-                                                (2*Trans+T_period, 0)
+                                                (0.1*Trans_in_up, Vi_trans_up[0]),
+                                                (0.3*Trans_in_up, Vi_trans_up[1]),
+                                                (0.5*Trans_in_up, Vi_trans_up[2]),
+                                                (0.7*Trans_in_up, Vi_trans_up[3]),
+                                                (0.9*Trans_in_up, Vi_trans_up[4]),
+                                                (Trans_in_up, V_dd), 
+                                                (Trans_in_up+T_pulse, V_dd), 
+                                                (0.1*Trans_in_down+Trans_in_up+T_pulse, Vi_trans_down[0]),
+                                                (0.3*Trans_in_down+Trans_in_up+T_pulse, Vi_trans_down[1]),
+                                                (0.5*Trans_in_down+Trans_in_up+T_pulse, Vi_trans_down[2]),
+                                                (0.7*Trans_in_down+Trans_in_up+T_pulse, Vi_trans_down[3]),
+                                                (0.9*Trans_in_down+Trans_in_up+T_pulse, Vi_trans_down[4]),                                                
+                                                (Trans_in_down+Trans_in_up+T_pulse, 0), 
+                                                (Trans_in_down+Trans_in_up+2*T_pulse, 0)
                                                 ]
                                         )
     
@@ -133,29 +130,49 @@ def create_circuit(V_dd, Cap_out, Trans, T_pulse, T_period, gate, Vi_trans_up, V
 
     return circuit
 
-def get_voltage(time, signal, Trans, T_pulse, V_dd):
+def get_voltage(time, signal, Trans_up, Trans_down, T_pulse):    # trans改成out的
     # 分别在这些时间节点记录电压值
-    up_factors = [0.1, 0.3, 0.5, 0.7, 0.9]
-    down_factors = [1.1, 1.3, 1.5, 1.7, 1.9]
+    record_factors = [0.1, 0.3, 0.5, 0.7, 0.9]
     
-    Vo_trans_up = [signal[np.where(time >= factor * Trans)[0][0]] for factor in up_factors]
-    Vo_trans_down = [signal[np.where(time >= factor * Trans + T_pulse)[0][0]] for factor in down_factors]
+    Vo_trans_up = [signal[np.where(time >= factor * Trans_up)[0][0]] for factor in record_factors]
+    Vo_trans_down = [signal[np.where(time >= factor * Trans_down + Trans_up + T_pulse)[0][0]] for factor in record_factors]
 
     return Vo_trans_up, Vo_trans_down
 
+def calculate_transition_times(time, signal, threshold_low, threshold_high):
+    up_times_low = []
+    up_times_high = []
+    down_times_low = []
+    down_times_high = []
+    for i in range(1, len(time)):
+        if signal[i-1] < threshold_low <= signal[i]:
+            up_times_low.append((time[i], signal[i]))
+        if signal[i-1] < threshold_high <= signal[i]:
+            up_times_high.append((time[i], signal[i]))
+
+    for i in range(1, len(time)):
+        if signal[i] < threshold_low <= signal[i-1]:
+            down_times_low.append((time[i], signal[i]))
+        if signal[i] < threshold_high <= signal[i-1]:
+            down_times_high.append((time[i], signal[i]))
+
+    Trans_out_up = abs(up_times_low[0][0]-up_times_high[0][0])
+    Trans_out_down = abs(down_times_low[0][0]-down_times_high[0][0])
+
+    return Trans_out_up, Trans_out_down
+
 def main():
     args = parse_arguments()
-    V_dd_range, Cap_out_range, Trans_range, T_pulse, T_period, Vi_trans_up, Vi_trans_down = define_variables(args)
+    V_dd_range, Cap_load_range, Trans_in_up, Trans_in_down, T_pulse, T_period, Vi_trans_up, Vi_trans_down = define_variables(args)
 
     results = []
     Vi_trans_up_floats = [float(value) for value in Vi_trans_up]
     Vi_trans_down_floats = [float(value) for value in Vi_trans_down]
     
     for V_dd in V_dd_range:
-        for Cap_out in Cap_out_range:
-            for Trans in Trans_range:
+        for Cap_load in Cap_load_range:
 
-                circuit = create_circuit(V_dd, Cap_out, Trans, T_pulse, T_period, args.gate, Vi_trans_up, Vi_trans_down)
+                circuit = create_circuit(V_dd, Cap_load, Trans_in_up, Trans_in_down, T_pulse, T_period, args.gate, Vi_trans_up, Vi_trans_down)
                     
                 # 进行瞬态仿真
                 simulator = circuit.simulator(temperature=25, nominal_temperature=25)
@@ -166,15 +183,21 @@ def main():
                 tpLH = format(tpLH, '.4e') if tpLH is not None else 'None'
                 tpHL = format(tpHL, '.4e') if tpHL is not None else 'None'
                     
+                # 计算输出端transition time
+                Trans_out_up, Trans_out_down = calculate_transition_times(np.array(analysis.time), np.array(analysis['y']), float(V_dd)*0.05, float(V_dd)*0.95)
+
                 # 计算过渡电压
-                Vo_trans_up, Vo_trans_down = get_voltage(np.array(analysis.time), np.array(analysis['a']), Trans, T_pulse, V_dd)
+                Vo_trans_up, Vo_trans_down = get_voltage(np.array(analysis.time), np.array(analysis['a']), Trans_out_up, Trans_out_down, T_pulse)
 
                 # 输出结果
                 result = {
                             "gate": args.gate,
                             "V_dd": V_dd.value,
-                            "Cap_out": Cap_out.value,
-                            "Trans": Trans.value,
+                            "Cap_load": Cap_load.value,
+                            "Trans_in_up": Trans_in_up.value,
+                            "Trans_in_down": Trans_in_down.value,
+                            "Trans_out_up": Trans_out_up,
+                            "Trans_out_down": Trans_out_down,
                             "Vi_trans_up": Vi_trans_up_floats,
                             "Vi_trans_down": Vi_trans_down_floats,
                             "Vo_trans_up": Vo_trans_up,

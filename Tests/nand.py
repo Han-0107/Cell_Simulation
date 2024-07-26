@@ -13,8 +13,8 @@ circuit.include('/home/yaohui/Research/PySpice/Libs/cells.sp')
 circuit.include('/home/yaohui/Research/PySpice/Libs/gpdk45nm.m')
 
 V_dd  = 2.1 @u_V
-C_out = 1 @u_pF
-T_swi = 5 @ u_ns
+Cap_load = 0.1 @u_pF
+T_swi = 5e-09 @ u_s
 
 # 定义电源电压
 circuit.V(1, 'VDD', circuit.gnd, V_dd)
@@ -22,7 +22,7 @@ circuit.V(2, 'VSS', circuit.gnd, 0 @u_V)
 
 # 负载端的RC
 # circuit.R('out', 'y', 'out', R_out)
-circuit.C('out', 'y', circuit.gnd, C_out)
+circuit.C('out', 'y', circuit.gnd, Cap_load)
 
 # 定义输入信号
 V_1_up = 0.1*V_dd
@@ -98,8 +98,35 @@ def calculate_propagation_delay(time, in_signal, out_signal, threshold):
 
 tpLH, tpHL, in_rise_times, out_rise_times, in_fall_times, out_fall_times = calculate_propagation_delay(np.array(analysis.time), np.array(analysis['a']), np.array(analysis['y']), float(V_dd)/2)
 
-print(tpLH)
-print(tpHL)
+print('tpLH:', tpLH, 's')
+print('tpHL:', tpHL, 's')
+
+def calculate_edge_times(time, signal, threshold_low, threshold_high):
+    up_times_low = []
+    up_times_high = []
+    down_times_low = []
+    down_times_high = []
+    for i in range(1, len(time)):
+        if signal[i-1] < threshold_low <= signal[i]:
+            up_times_low.append((time[i], signal[i]))
+        if signal[i-1] < threshold_high <= signal[i]:
+            up_times_high.append((time[i], signal[i]))
+
+    for i in range(1, len(time)):
+        if signal[i] < threshold_low <= signal[i-1]:
+            down_times_low.append((time[i], signal[i]))
+        if signal[i] < threshold_high <= signal[i-1]:
+            down_times_high.append((time[i], signal[i]))
+
+    Trans_out_up = abs(up_times_low[0][0]-up_times_high[0][0])
+    Trans_out_down = abs(down_times_low[0][0]-down_times_high[0][0])
+
+    print('Up transition time:', Trans_out_up, 's')
+    print('Down transition time:', Trans_out_down, 's')
+
+    return up_times_low, up_times_high, down_times_low, down_times_high
+
+up_times_low, up_times_high, down_times_low, down_times_high = calculate_edge_times(np.array(analysis.time), np.array(analysis['y']), float(V_dd)*0.05, float(V_dd)*0.95)
 
 figure, ax = plt.subplots(figsize=(10, 6))
 plot(analysis['a'], axis=ax, label='V(in1)')
@@ -114,6 +141,14 @@ for t, v in in_fall_times:
     ax.plot(t, v, 'bx', label='V(in1) down')  # 蓝色表示输入下降沿
 for t, v in out_fall_times:
     ax.plot(t, v, 'mx', label='V(out) down')  # 品红色表示输出下降沿
+for t, v in up_times_low:
+    ax.plot(t, v, 'cs', label='V(out) up at 0.01*V_dd')  # 青色表示输出上升到0.01*V_dd
+for t, v in up_times_high:
+    ax.plot(t, v, 'ys', label='V(out) up at 0.99*V_dd')  # 黄色表示输出上升到0.99*V_dd
+for t, v in down_times_low:
+    ax.plot(t, v, 'rs', label='V(out) down at 0.01*V_dd')  # 青色表示输出上升到0.01*V_dd
+for t, v in down_times_high:
+    ax.plot(t, v, 'bs', label='V(out) down at 0.99*V_dd')  # 黄色表示输出上升到0.99*V_dd
 
 plt.title('NAND Gate Transient Analysis')
 plt.xlabel('Time [s]')
