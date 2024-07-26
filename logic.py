@@ -1,26 +1,28 @@
 import numpy as np
 import argparse
 import json
+import matplotlib.pyplot as plt
+from PySpice.Probe.Plot import plot
 from PySpice.Spice.Netlist import Circuit
 from PySpice.Spice.Simulation import *
 from PySpice.Unit import *
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Gate Simulation Parameters')
-    parser.add_argument('--gate', type=str, required=True, help='Gate type')
+    parser.add_argument('--gate', type=str, default='INVX1', help='Gate type')
     parser.add_argument('--V_dd_start', type=float, default=1.8, help='Start value of voltage')
-    parser.add_argument('--V_dd_end', type=float, default=2.2, help='End value of voltage')
-    parser.add_argument('--V_dd_step', type=float, default=0.4, help='Step value of voltage')
-    parser.add_argument('--R_out_start', type=float, default=5.0, help='Start value of load resistance')
-    parser.add_argument('--R_out_end', type=float, default=15.0, help='End value of load resistance')
-    parser.add_argument('--R_out_step', type=float, default=10.0, help='Step value of load resistance')
-    parser.add_argument('--C_out_start', type=float, default=0.05, help='Start value of load capacitance')
-    parser.add_argument('--C_out_end', type=float, default=0.15, help='End value of load capacitance')
+    parser.add_argument('--V_dd_end', type=float, default=2.1, help='End value of voltage')
+    parser.add_argument('--V_dd_step', type=float, default=0.3, help='Step value of voltage')
+    parser.add_argument('--R_out_start', type=float, default=1.0, help='Start value of load resistance')
+    parser.add_argument('--R_out_end', type=float, default=1.1, help='End value of load resistance')
+    parser.add_argument('--R_out_step', type=float, default=0.1, help='Step value of load resistance')
+    parser.add_argument('--C_out_start', type=float, default=1.0, help='Start value of load capacitance')
+    parser.add_argument('--C_out_end', type=float, default=1.1, help='End value of load capacitance')
     parser.add_argument('--C_out_step', type=float, default=0.1, help='Step value of load capacitance')
-    parser.add_argument('--T_swi_start', type=float, default=0.5, help='Start value of transition time')
-    parser.add_argument('--T_swi_end', type=float, default=1.5, help='End value of transition time')
+    parser.add_argument('--T_swi_start', type=float, default=5.0, help='Start value of transition time')
+    parser.add_argument('--T_swi_end', type=float, default=6.0, help='End value of transition time')
     parser.add_argument('--T_swi_step', type=float, default=1.0, help='Step value of transition time')
-    parser.add_argument('--T_pulse', type=float, default=20, help='Value of pulse time')
+    parser.add_argument('--T_pulse', type=float, default=10, help='Value of pulse time')
     parser.add_argument('--T_period', type=float, default=40, help='Value of period time')
     parser.add_argument('--Vl_trans_up', type=float, nargs=5, default=[0.18, 0.54, 0.9, 1.26, 1.62], help='Voltages for up transitions at 0.1*V_dd, 0.3*T_swi, 0.5*T_swi, 0.7*T_swi, 0.9*T_swi')
     parser.add_argument('--Vl_trans_down', type=float, nargs=5, default=[1.62, 1.26, 0.9, 0.54, 0.18], help='Voltages for down transitions at 1.1*T_swi+T_pulse, 1.3*T_swi+T_pulse, 1.5*T_swi+T_pulse, 1.7*T_swi+T_pulse, 1.9*T_swi+T_pulse')
@@ -53,20 +55,45 @@ def define_variables(args):
 
     return V_dd_range, R_out_range, C_out_range, T_swi_range, T_pulse, T_period, Vl_trans_up, Vl_trans_down
 
-def calculate_delay(time, signal, threshold):
-    rise_times = time[np.where(np.diff(signal > threshold, prepend=False))]
-    fall_times = time[np.where(np.diff(signal < threshold, prepend=False))]
-    if len(rise_times) > 1:
-        tpLH = rise_times[1] - rise_times[0]
+def calculate_propagation_delay(time, in_signal, out_signal, threshold, gate):
+    in_rise_times = []
+    out_rise_times = []
+    in_fall_times = []
+    out_fall_times = []
+    
+    for i in range(1, len(time)):
+        if in_signal[i-1] < threshold <= in_signal[i]:
+            in_rise_times.append((time[i], in_signal[i]))
+        if in_signal[i-1] > threshold >= in_signal[i]:
+            in_fall_times.append((time[i], in_signal[i]))
+        if out_signal[i-1] < threshold <= out_signal[i]:
+            out_rise_times.append((time[i], out_signal[i]))
+        if out_signal[i-1] > threshold >= out_signal[i]:
+            out_fall_times.append((time[i], out_signal[i]))
+
+    tpLH = None
+    tpHL = None
+
+    if gate == 'INVX1': # 还要加上其他逻辑门！
+        # 计算上升延迟
+        if len(in_rise_times) > 0 and len(out_fall_times) > 0:
+            tpLH = out_fall_times[0][0] - in_rise_times[0][0]
+    
+        # 计算下降延迟
+        if len(in_fall_times) > 0 and len(out_rise_times) > 0:
+            tpHL = out_rise_times[0][0] - in_fall_times[0][0]
     else:
-        tpLH = None
-    if len(fall_times) > 1:
-        tpHL = fall_times[1] - fall_times[0]
-    else:
-        tpHL = None
+        # 计算上升延迟
+        if len(in_rise_times) > 0 and len(out_rise_times) > 0:
+            tpLH = out_rise_times[0][0] - in_rise_times[0][0]
+    
+        # 计算下降延迟
+        if len(in_fall_times) > 0 and len(out_fall_times) > 0:
+            tpHL = out_fall_times[0][0] - in_fall_times[0][0]
+
     return tpLH, tpHL
 
-def create_circuit(V_dd, R_out, C_out, T_swi, T_pulse, T_period, Gate, Vl_trans_up, Vl_trans_down):
+def create_circuit(V_dd, R_out, C_out, T_swi, T_pulse, T_period, gate, Vl_trans_up, Vl_trans_down):
     # 创建电路
     circuit = Circuit('Gate for Experiment')
 
@@ -102,14 +129,14 @@ def create_circuit(V_dd, R_out, C_out, T_swi, T_pulse, T_period, Gate, Vl_trans_
                                                 ]
                                         )
     
-    if Gate == 'NAND2X1' or Gate == 'AND2X1':
+    if gate == 'NAND2X1' or gate == 'AND2X1':
         circuit.VoltageSource(3, 'b', circuit.gnd, V_dd)
-        circuit.X(1, Gate, 'y', 'a', 'b', 'VDD', 'VSS')
-    elif Gate == 'INVX1':
-        circuit.X(1, Gate, 'y', 'a', 'VDD', 'VSS')
+        circuit.X(1, gate, 'y', 'a', 'b', 'VDD', 'VSS')
+    elif gate == 'INVX1':
+        circuit.X(1, gate, 'y', 'a', 'VDD', 'VSS')
     else:
         circuit.VoltageSource(3, 'b', circuit.gnd, 0 @ u_V)
-        circuit.X(1, Gate, 'y', 'a', 'b', 'VDD', 'VSS')
+        circuit.X(1, gate, 'y', 'a', 'b', 'VDD', 'VSS')
 
     return circuit
 
@@ -140,10 +167,10 @@ def main():
                     
                     # 进行瞬态仿真
                     simulator = circuit.simulator(temperature=25, nominal_temperature=25)
-                    analysis = simulator.transient(step_time=0.001 @ u_ns, end_time=100 @ u_ns)
+                    analysis = simulator.transient(step_time=0.001 @ u_ns, end_time=45 @ u_ns)
                     
                     # 计算延时
-                    tpLH, tpHL = calculate_delay(np.array(analysis.time), np.array(analysis['y']), float(V_dd)/2)
+                    tpLH, tpHL = calculate_propagation_delay(np.array(analysis.time), np.array(analysis['a']), np.array(analysis['y']), float(V_dd)/2, args.gate)
                     tpLH = format(tpLH, '.4e') if tpLH is not None else 'None'
                     tpHL = format(tpHL, '.4e') if tpHL is not None else 'None'
                     

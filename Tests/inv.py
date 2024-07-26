@@ -17,16 +17,13 @@ R_in  = 1 @u_Ohm
 C_in  = 1 @u_pF
 R_out = 1 @u_Ohm
 C_out = 1 @u_pF
-T_swi = 1 @ u_ns
+T_swi = 5 @ u_ns
 
 # 定义电源电压
 circuit.V(1, 'VDD', circuit.gnd, V_dd)
 circuit.V(2, 'VSS', circuit.gnd, 0 @u_V)
 
 # 定义输入信号
-# circuit.PulseVoltageSource('Vpulse', 'a', circuit.gnd, initial_value=0 @u_V, pulsed_value=V_dd, 
-#                            delay_time=0 @u_ns, rise_time=1 @u_ns, fall_time=1 @u_ns, pulse_width=20 @u_ns, period=40 @u_ns)
-# circuit.VoltageSource(3, 'b', circuit.gnd, V_dd)
 V_1_up = 0.1*V_dd
 V_3_up = 0.3*V_dd
 V_5_up = 0.5*V_dd
@@ -37,7 +34,7 @@ V_3_down = 0.7*V_dd
 V_5_down = 0.5*V_dd
 V_7_down = 0.3*V_dd
 V_9_down = 0.1*V_dd
-T_pulse = 20 @ u_ns
+T_pulse = 10 @ u_ns
 T_period = 40 @ u_ns
 
 circuit.PieceWiseLinearVoltageSource('Vpulse', 'a', circuit.gnd,
@@ -60,14 +57,6 @@ circuit.PieceWiseLinearVoltageSource('Vpulse', 'a', circuit.gnd,
                                                 ]
                                     )
 
-# # 电阻和电容元件（可选，视实际情况）
-# circuit.R('inA', 'a', 'inA', R_in)
-# circuit.R('inB', 'b', 'inB', R_in)
-# circuit.R('out', 'y', 'out', R_out)
-# circuit.C('inA', 'inA', circuit.gnd, C_in)
-# circuit.C('inB', 'inB', circuit.gnd, C_in)
-# circuit.C('out', 'out', circuit.gnd, C_out)
-
 # 定义门
 circuit.X(1, 'INVX1', 'y', 'a', 'VDD', 'VSS')
 
@@ -76,20 +65,38 @@ simulator = circuit.simulator(temperature=25, nominal_temperature=25)
 analysis = simulator.transient(step_time=0.001 @u_ns, end_time=45 @u_ns)
 
 # 计算延时
-def calculate_delay(time, signal, threshold):
-    rise_times = time[np.where(np.diff(signal > threshold, prepend=False))]
-    fall_times = time[np.where(np.diff(signal < threshold, prepend=False))]
-    if len(rise_times) > 1:
-        tpLH = rise_times[1] - rise_times[0]
-    else:
-        tpLH = None
-    if len(fall_times) > 1:
-        tpHL = fall_times[1] - fall_times[0]
-    else:
-        tpHL = None
-    return tpLH, tpHL
+def calculate_propagation_delay(time, in_signal, out_signal, threshold):
+    in_rise_times = []
+    out_rise_times = []
+    in_fall_times = []
+    out_fall_times = []
+    
+    for i in range(1, len(time)):
+        if in_signal[i-1] < threshold <= in_signal[i]:
+            in_rise_times.append((time[i], in_signal[i]))
+        if in_signal[i-1] > threshold >= in_signal[i]:
+            in_fall_times.append((time[i], in_signal[i]))
+        if out_signal[i-1] < threshold <= out_signal[i]:
+            out_rise_times.append((time[i], out_signal[i]))
+        if out_signal[i-1] > threshold >= out_signal[i]:
+            out_fall_times.append((time[i], out_signal[i]))
 
-tpLH, tpHL = calculate_delay(np.array(analysis.time), np.array(analysis['y']), float(V_dd)/2)
+    tpLH = None
+    tpHL = None
+
+    # 计算上升延迟
+    if len(in_rise_times) > 0 and len(out_fall_times) > 0:
+        tpLH = out_fall_times[0][0] - in_rise_times[0][0]
+    
+    # 计算下降延迟
+    if len(in_fall_times) > 0 and len(out_rise_times) > 0:
+        tpHL = out_rise_times[0][0] - in_fall_times[0][0]
+
+    print(tpLH)
+
+    return tpLH, tpHL, in_rise_times, out_rise_times, in_fall_times, out_fall_times
+
+tpLH, tpHL, in_rise_times, out_rise_times, in_fall_times, out_fall_times = calculate_propagation_delay(np.array(analysis.time), np.array(analysis['a']), np.array(analysis['y']), float(V_dd)/2)
 
 print(tpLH, "ns")
 print(tpHL, "ns")
@@ -97,6 +104,17 @@ print(tpHL, "ns")
 figure, ax = plt.subplots(figsize=(10, 6))
 plot(analysis['a'], axis=ax, label='V(in1)')
 plot(analysis['y'], axis=ax, label='V(out)')
+
+# 标出变化的点
+for t, v in in_rise_times:
+    ax.plot(t, v, 'go')  # 绿色表示输入上升沿
+for t, v in out_rise_times:
+    ax.plot(t, v, 'ro')  # 红色表示输出上升沿
+for t, v in in_fall_times:
+    ax.plot(t, v, 'bx')  # 蓝色表示输入下降沿
+for t, v in out_fall_times:
+    ax.plot(t, v, 'mx')  # 品红色表示输出下降沿
+
 plt.title('Gate Transient Analysis')
 plt.xlabel('Time [s]')
 plt.ylabel('Voltage [V]')
