@@ -12,9 +12,9 @@ circuit = Circuit('INV')
 circuit.include('/home/yaohui/Research/PySpice/Libs/cells.sp')
 circuit.include('/home/yaohui/Research/PySpice/Libs/gpdk45nm.m')
 
-V_dd  = 2.1 @u_V
+V_dd  = 1.1 @u_V
 C_out = 0.1 @u_pF
-T_swi = 5e-09 @ u_s
+T_swi = 5 @ u_ns
 
 # 定义电源电压
 circuit.V(1, 'VDD', circuit.gnd, V_dd)
@@ -35,8 +35,8 @@ V_3_down = 0.7*V_dd
 V_5_down = 0.5*V_dd
 V_7_down = 0.3*V_dd
 V_9_down = 0.1*V_dd
-T_pulse = 10 @ u_ns
-T_period = 40 @ u_ns
+T_pulse = 5 @ u_ns
+T_period = 20 @ u_ns
 
 circuit.PieceWiseLinearVoltageSource('Vpulse', 'a', circuit.gnd,
                                         values=[
@@ -63,7 +63,7 @@ circuit.X(1, 'INVX1', 'y', 'a', 'VDD', 'VSS')
 
 # 进行瞬态仿真
 simulator = circuit.simulator(temperature=25, nominal_temperature=25)
-analysis = simulator.transient(step_time=0.001 @u_ns, end_time=45 @u_ns)
+analysis = simulator.transient(step_time=0.001 @u_ns, end_time=25 @u_ns)
 
 # 计算延时
 def calculate_propagation_delay(time, in_signal, out_signal, threshold):
@@ -141,13 +141,13 @@ for t, v in in_fall_times:
 for t, v in out_fall_times:
     ax.plot(t, v, 'mx', label='V(out) down')  # 品红色表示输出下降沿
 for t, v in up_times_low:
-    ax.plot(t, v, 'cs', label='V(out) up at 0.01*V_dd')  # 青色表示输出上升到0.01*V_dd
+    ax.plot(t, v, 'cs', label='V(out) up at 0.05*V_dd')  # 青色表示输出上升到0.01*V_dd
 for t, v in up_times_high:
-    ax.plot(t, v, 'ys', label='V(out) up at 0.99*V_dd')  # 黄色表示输出上升到0.99*V_dd
+    ax.plot(t, v, 'ys', label='V(out) up at 0.95*V_dd')  # 黄色表示输出上升到0.99*V_dd
 for t, v in down_times_low:
-    ax.plot(t, v, 'rs', label='V(out) down at 0.01*V_dd')  # 青色表示输出上升到0.01*V_dd
+    ax.plot(t, v, 'rs', label='V(out) down at 0.05*V_dd')  # 青色表示输出上升到0.01*V_dd
 for t, v in down_times_high:
-    ax.plot(t, v, 'bs', label='V(out) down at 0.99*V_dd')  # 黄色表示输出上升到0.99*V_dd
+    ax.plot(t, v, 'bs', label='V(out) down at 0.95*V_dd')  # 黄色表示输出上升到0.99*V_dd
 
 plt.title('NOT Gate Transient Analysis')
 plt.xlabel('Time [s]')

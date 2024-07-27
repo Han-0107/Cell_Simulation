@@ -9,41 +9,29 @@ from PySpice.Unit import *
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Gate Simulation Parameters')
-    parser.add_argument('--gate', type=str, default='NAND2X1', help='Gate type')
-    parser.add_argument('--V_dd_start', type=float, default=2.1, help='Start value of voltage')
-    parser.add_argument('--V_dd_end', type=float, default=2.4, help='End value of voltage')
-    parser.add_argument('--V_dd_step', type=float, default=0.3, help='Step value of voltage')
-    parser.add_argument('--Cap_load_start', type=float, default=0.1, help='Start value of load capacitance')
-    parser.add_argument('--Cap_load_end', type=float, default=0.5, help='End value of load capacitance')
-    parser.add_argument('--Cap_load_step', type=float, default=0.1, help='Step value of load capacitance')
-    parser.add_argument('--Trans_in_up', type=float, default=5.0e-09, help='UP value of transition time')
-    parser.add_argument('--Trans_in_down', type=float, default=5.0e-09, help='Down value of transition time')
-    parser.add_argument('--T_pulse', type=float, default=10, help='Value of pulse time')
-    parser.add_argument('--T_period', type=float, default=40, help='Value of period time')
-    parser.add_argument('--Vi_trans_up', type=float, nargs=5, default=[0.21, 0.63, 1.05, 1.47, 1.89], help='Voltages for up transitions at 0.1*V_dd, 0.3*Trans, 0.5*Trans, 0.7*Trans, 0.9*Trans')
-    parser.add_argument('--Vi_trans_down', type=float, nargs=5, default=[1.89, 1.47, 1.05, 0.63, 0.21], help='Voltages for down transitions at 1.1*Trans+T_pulse, 1.3*Trans+T_pulse, 1.5*Trans+T_pulse, 1.7*Trans+T_pulse, 1.9*Trans+T_pulse')
+    parser.add_argument('--gate', type=str, default='AND2X1', help='Gate type')
+    parser.add_argument('--V_dd', type=float, default=1.1, help='Voltage')
+    parser.add_argument('--Cap_load', type=float, default=0.1, help='Load capacitance')
+    parser.add_argument('--Trans_in_up', type=float, default=5, help='UP time of transition')
+    parser.add_argument('--Trans_in_down', type=float, default=5, help='Down time of transition')
+    parser.add_argument('--T_pulse', type=float, default=5, help='Time of pulse')
+    parser.add_argument('--T_period', type=float, default=20, help='Time of period')
+    parser.add_argument('--Vi_trans_up', type=float, nargs=5, default=[0.11, 0.33, 0.55, 0.77, 0.99], help='Voltages for up transitions')
+    parser.add_argument('--Vi_trans_down', type=float, nargs=5, default=[0.99, 0.77, 0.55, 0.33, 0.11], help='Voltages for down transition')
     return parser.parse_args()
 
 def define_variables(args):
     # 添加单位
-    V_dd_start = args.V_dd_start @ u_V
-    V_dd_end = args.V_dd_end @ u_V
-    V_dd_step = args.V_dd_step @ u_V
-    Cap_load_start = args.Cap_load_start @ u_pF
-    Cap_load_end = args.Cap_load_end @ u_pF
-    Cap_load_step = args.Cap_load_step @ u_pF
-    Trans_in_up = args.Trans_in_up @ u_s
-    Trans_in_down = args.Trans_in_down @ u_s
+    V_dd = args.V_dd @ u_V
+    Cap_load = args.Cap_load @ u_pF
+    Trans_in_up = args.Trans_in_up @ u_ns
+    Trans_in_down = args.Trans_in_down @ u_ns
     T_pulse = args.T_pulse @ u_ns
     T_period = args.T_period @ u_ns
     Vi_trans_up = args.Vi_trans_up
     Vi_trans_down = args.Vi_trans_down
 
-    # 生成变量范围
-    V_dd_range = np.arange(V_dd_start, V_dd_end + V_dd_step, V_dd_step)
-    Cap_load_range = np.arange(Cap_load_start, Cap_load_end + Cap_load_step, Cap_load_step)
-
-    return V_dd_range, Cap_load_range, Trans_in_up, Trans_in_down, T_pulse, T_period, Vi_trans_up, Vi_trans_down
+    return V_dd, Cap_load, Trans_in_up, Trans_in_down, T_pulse, T_period, Vi_trans_up, Vi_trans_down
 
 def calculate_propagation_delay(time, in_signal, out_signal, threshold, gate):
     in_rise_times = []
@@ -130,14 +118,80 @@ def create_circuit(V_dd, Cap_load, Trans_in_up, Trans_in_down, T_pulse, T_period
 
     return circuit
 
-def get_voltage(time, signal, Trans_up, Trans_down, T_pulse):    # trans改成out的
-    # 分别在这些时间节点记录电压值
-    record_factors = [0.1, 0.3, 0.5, 0.7, 0.9]
+def get_voltage(time, signal, T_period):
     
-    Vo_trans_up = [signal[np.where(time >= factor * Trans_up)[0][0]] for factor in record_factors]
-    Vo_trans_down = [signal[np.where(time >= factor * Trans_down + Trans_up + T_pulse)[0][0]] for factor in record_factors]
+    # 提取仿真采样电压值
+    record_factors = np.arange(0, 1, 0.01).tolist()
+    max_time = T_period
+    Vo = [round(abs(signal[np.where(time >= factor * max_time)[0][0]]), 3) for factor in record_factors]
+    
+    return Vo
 
-    return Vo_trans_up, Vo_trans_down
+def resize_list(original_list, target_length):
+    original_length = len(original_list)
+    if original_length == target_length:
+        return original_list
+    
+    # 使用线性插值进行压缩或扩展
+    original_indices = np.linspace(0, original_length - 1, num=original_length)
+    target_indices = np.linspace(0, original_length - 1, num=target_length)
+    resized_list = np.interp(target_indices, original_indices, original_list)
+    return resized_list.tolist()
+
+def extract_segments(data, threshold=0.03, min_diff=0.003): # 采样阈值
+    def filter_segment(segment):
+        filtered_segment = []
+        last_value = None
+        for value in segment:
+            if last_value is None or abs(value - last_value) >= min_diff:
+                filtered_segment.append(value)
+                last_value = value
+        return filtered_segment
+    
+    rising_segment = []
+    falling_segment = []
+    
+    rising = None
+    
+    for i in range(1, len(data)):
+        if rising is None:
+            if data[i] - data[i-1] > threshold:
+                rising = True
+            elif data[i-1] - data[i] > threshold:
+                rising = False
+        
+        if rising:
+            if data[i] - data[i-1] >= -threshold:
+                if not rising_segment or data[i-1] != rising_segment[-1]:
+                    rising_segment.append(data[i-1])
+            else:
+                if not rising_segment or data[i-1] != rising_segment[-1]:
+                    rising_segment.append(data[i-1])
+                rising = False
+                if not falling_segment or data[i] != falling_segment[-1]:
+                    falling_segment.append(data[i])
+        if not rising:
+            if data[i-1] - data[i] >= -threshold:
+                if not falling_segment or data[i-1] != falling_segment[-1]:
+                    falling_segment.append(data[i-1])
+            else:
+                if not falling_segment or data[i-1] != falling_segment[-1]:
+                    falling_segment.append(data[i-1])
+                rising = True
+                if not rising_segment or data[i] != rising_segment[-1]:
+                    rising_segment.append(data[i])
+    
+    if rising:
+        if not rising_segment or data[-1] != rising_segment[-1]:
+            rising_segment.append(data[-1])
+    else:
+        if not falling_segment or data[-1] != falling_segment[-1]:
+            falling_segment.append(data[-1])
+    
+    rising_segment = filter_segment(rising_segment)
+    falling_segment = filter_segment(falling_segment)
+    
+    return rising_segment, falling_segment
 
 def calculate_transition_times(time, signal, threshold_low, threshold_high):
     up_times_low = []
@@ -163,50 +217,53 @@ def calculate_transition_times(time, signal, threshold_low, threshold_high):
 
 def main():
     args = parse_arguments()
-    V_dd_range, Cap_load_range, Trans_in_up, Trans_in_down, T_pulse, T_period, Vi_trans_up, Vi_trans_down = define_variables(args)
+    V_dd, Cap_load, Trans_in_up, Trans_in_down, T_pulse, T_period, Vi_trans_up, Vi_trans_down = define_variables(args)
 
     results = []
     Vi_trans_up_floats = [float(value) for value in Vi_trans_up]
     Vi_trans_down_floats = [float(value) for value in Vi_trans_down]
-    
-    for V_dd in V_dd_range:
-        for Cap_load in Cap_load_range:
 
-                circuit = create_circuit(V_dd, Cap_load, Trans_in_up, Trans_in_down, T_pulse, T_period, args.gate, Vi_trans_up, Vi_trans_down)
-                    
-                # 进行瞬态仿真
-                simulator = circuit.simulator(temperature=25, nominal_temperature=25)
-                analysis = simulator.transient(step_time=0.001 @ u_ns, end_time=45 @ u_ns)
-                    
-                # 计算延时
-                tpLH, tpHL = calculate_propagation_delay(np.array(analysis.time), np.array(analysis['a']), np.array(analysis['y']), float(V_dd)/2, args.gate)
-                tpLH = format(tpLH, '.4e') if tpLH is not None else 'None'
-                tpHL = format(tpHL, '.4e') if tpHL is not None else 'None'
-                    
-                # 计算输出端transition time
-                Trans_out_up, Trans_out_down = calculate_transition_times(np.array(analysis.time), np.array(analysis['y']), float(V_dd)*0.05, float(V_dd)*0.95)
 
-                # 计算过渡电压
-                Vo_trans_up, Vo_trans_down = get_voltage(np.array(analysis.time), np.array(analysis['a']), Trans_out_up, Trans_out_down, T_pulse)
+    circuit = create_circuit(V_dd, Cap_load, Trans_in_up, Trans_in_down, T_pulse, T_period, args.gate, Vi_trans_up, Vi_trans_down)
+                    
+    # 进行瞬态仿真
+    simulator = circuit.simulator(temperature=25, nominal_temperature=25)
+    analysis = simulator.transient(step_time=0.001 @ u_ns, end_time=25 @ u_ns)
+                    
+    # 计算延时
+    tpLH, tpHL = calculate_propagation_delay(np.array(analysis.time), np.array(analysis['a']), np.array(analysis['y']), float(V_dd)/2, args.gate)
+    tpLH = format(tpLH, '.4e') if tpLH is not None else 'None'
+    tpHL = format(tpHL, '.4e') if tpHL is not None else 'None'
+                    
+    # 计算输出端transition time
+    Trans_out_up, Trans_out_down = calculate_transition_times(np.array(analysis.time), np.array(analysis['y']), float(V_dd)*0.05, float(V_dd)*0.95)
 
-                # 输出结果
-                result = {
-                            "gate": args.gate,
-                            "V_dd": V_dd.value,
-                            "Cap_load": Cap_load.value,
-                            "Trans_in_up": Trans_in_up.value,
-                            "Trans_in_down": Trans_in_down.value,
-                            "Trans_out_up": Trans_out_up,
-                            "Trans_out_down": Trans_out_down,
-                            "Vi_trans_up": Vi_trans_up_floats,
-                            "Vi_trans_down": Vi_trans_down_floats,
-                            "Vo_trans_up": Vo_trans_up,
-                            "Vo_trans_down": Vo_trans_down,
-                            "tpLH": tpLH,
-                            "tpHL": tpHL
-                        }
-                results.append(result)
-                print(result)
+    # 计算过渡电压
+    Vout = get_voltage(np.array(analysis.time), np.array(analysis['y']), T_period)
+    Vout_up, Vout_down = extract_segments(Vout)
+
+    len_vin = len(Vi_trans_up)
+    Vout_up = resize_list(Vout_up, len_vin)
+    Vout_down = resize_list(Vout_down, len_vin)
+
+    # 输出结果
+    result = {
+                "gate": args.gate,
+                "V_dd": V_dd.value,
+                "Cap_load": Cap_load.value,
+                "Trans_in_up": Trans_in_up.value,
+                "Trans_in_down": Trans_in_down.value,
+                "Trans_out_up": Trans_out_up,
+                "Trans_out_down": Trans_out_down,
+                "Vi_trans_up": Vi_trans_up_floats,
+                "Vi_trans_down": Vi_trans_down_floats,
+                "Vout_up": Vout_up,
+                "Vout_down": Vout_down,
+                "tpLH": tpLH,
+                "tpHL": tpHL
+            }
+    results.append(result)
+    print(result)
 
     with open(f"./Results/{args.gate}_delay.json", 'w') as json_file:
         json.dump(results, json_file, indent=4)
