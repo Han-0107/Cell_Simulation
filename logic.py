@@ -123,7 +123,7 @@ def get_voltage(time, signal, T_period):
     # 提取仿真采样电压值
     record_factors = np.arange(0, 1, 0.01).tolist()
     max_time = T_period
-    Vo = [round(abs(signal[np.where(time >= factor * max_time)[0][0]]), 3) for factor in record_factors]
+    Vo = [round(abs(signal[np.where(time >= factor * max_time)[0][0]]), 4) for factor in record_factors]
     
     return Vo
 
@@ -190,6 +190,7 @@ def extract_segments(data, threshold=0.03, min_diff=0.003): # 采样阈值
     
     rising_segment = filter_segment(rising_segment)
     falling_segment = filter_segment(falling_segment)
+    falling_segment = falling_segment[2:]   # 经验之谈
     
     return rising_segment, falling_segment
 
