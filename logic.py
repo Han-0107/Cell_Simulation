@@ -9,7 +9,7 @@ from PySpice.Unit import *
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='Gate Simulation Parameters')
-    parser.add_argument('--gate', type=str, default='AND2X1', help='Gate type')
+    parser.add_argument('--gate', type=str, default='NOR2X1', help='Gate type')
     parser.add_argument('--V_dd', type=float, default=1.1, help='Voltage')
     parser.add_argument('--Cap_load', type=float, default=0.1, help='Load capacitance')
     parser.add_argument('--Trans_in_up', type=float, default=5, help='UP time of transition')
@@ -69,7 +69,7 @@ def calculate_propagation_delay(time, in_signal, out_signal, threshold, gate):
         if len(in_fall_times) > 0 and len(out_fall_times) > 0:
             tpHL = out_fall_times[0][0] - in_fall_times[0][0]
 
-    return tpLH, tpHL
+    return tpLH, tpHL, in_rise_times, out_rise_times, in_fall_times, out_fall_times
 
 def create_circuit(V_dd, Cap_load, Trans_in_up, Trans_in_down, T_pulse, T_period, gate, Vi_trans_up, Vi_trans_down):
     # 创建电路
@@ -214,7 +214,7 @@ def calculate_transition_times(time, signal, threshold_low, threshold_high):
     Trans_out_up = abs(up_times_low[0][0]-up_times_high[0][0])
     Trans_out_down = abs(down_times_low[0][0]-down_times_high[0][0])
 
-    return Trans_out_up, Trans_out_down
+    return Trans_out_up, Trans_out_down, up_times_low, up_times_high, down_times_low, down_times_high
 
 def main():
     args = parse_arguments()
@@ -232,12 +232,12 @@ def main():
     analysis = simulator.transient(step_time=0.001 @ u_ns, end_time=25 @ u_ns)
                     
     # 计算延时
-    tpLH, tpHL = calculate_propagation_delay(np.array(analysis.time), np.array(analysis['a']), np.array(analysis['y']), float(V_dd)/2, args.gate)
+    tpLH, tpHL, in_rise_times, out_rise_times, in_fall_times, out_fall_times = calculate_propagation_delay(np.array(analysis.time), np.array(analysis['a']), np.array(analysis['y']), float(V_dd)/2, args.gate)
     tpLH = format(tpLH, '.4e') if tpLH is not None else 'None'
     tpHL = format(tpHL, '.4e') if tpHL is not None else 'None'
                     
     # 计算输出端transition time
-    Trans_out_up, Trans_out_down = calculate_transition_times(np.array(analysis.time), np.array(analysis['y']), float(V_dd)*0.05, float(V_dd)*0.95)
+    Trans_out_up, Trans_out_down, up_times_low, up_times_high, down_times_low, down_times_high = calculate_transition_times(np.array(analysis.time), np.array(analysis['y']), float(V_dd)*0.05, float(V_dd)*0.95)
 
     # 计算过渡电压
     Vout = get_voltage(np.array(analysis.time), np.array(analysis['y']), T_period)
@@ -268,6 +268,35 @@ def main():
 
     with open(f"./Results/{args.gate}_delay.json", 'w') as json_file:
         json.dump(results, json_file, indent=4)
+
+    figure, ax = plt.subplots(figsize=(10, 6))
+    plot(analysis['a'], axis=ax, label='V(in1)')
+    plot(analysis['y'], axis=ax, label='V(out)')
+
+    # 标出变化的点
+    for t, v in in_rise_times:
+        ax.plot(t, v, 'go', label='V(in1) up')  # 绿色表示输入上升沿
+    for t, v in out_rise_times:
+        ax.plot(t, v, 'ro', label='V(out) up')  # 红色表示输出上升沿
+    for t, v in in_fall_times:
+        ax.plot(t, v, 'bx', label='V(in1) down')  # 蓝色表示输入下降沿
+    for t, v in out_fall_times:
+        ax.plot(t, v, 'mx', label='V(out) down')  # 品红色表示输出下降沿
+    for t, v in up_times_low:
+        ax.plot(t, v, 'cs', label='V(out) up at 0.05*V_dd')  # 青色表示输出上升到0.01*V_dd
+    for t, v in up_times_high:
+        ax.plot(t, v, 'ys', label='V(out) up at 0.95*V_dd')  # 黄色表示输出上升到0.99*V_dd
+    for t, v in down_times_low:
+        ax.plot(t, v, 'rs', label='V(out) down at 0.05*V_dd')  # 青色表示输出上升到0.01*V_dd
+    for t, v in down_times_high:
+        ax.plot(t, v, 'bs', label='V(out) down at 0.95*V_dd')  # 黄色表示输出上升到0.99*V_dd
+
+    plt.title(f"{args.gate} Gate Transient Analysis")
+    plt.xlabel('Time [s]')
+    plt.ylabel('Voltage [V]')
+    plt.legend()
+    plt.grid()
+    plt.show()
 
 if __name__ == "__main__":
     main()
