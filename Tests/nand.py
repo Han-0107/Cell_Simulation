@@ -7,6 +7,7 @@ import numpy as np
 
 # 创建电路
 circuit = Circuit('NAND')
+gate = 'NAND2X1'
 
 # 包含 SPICE 模型库
 circuit.include('/home/yaohui/Research/PySpice/Libs/cells.sp')
@@ -60,7 +61,7 @@ circuit.PieceWiseLinearVoltageSource('Vpulse', 'a', circuit.gnd,
 circuit.VoltageSource(3, 'b', circuit.gnd, V_dd)
 
 # 定义门
-circuit.X(1, 'NAND2X1', 'y', 'a', 'b', 'VDD', 'VSS')
+circuit.X(1, gate, 'y', 'a', 'b', 'VDD', 'VSS')
 
 # 进行瞬态仿真
 simulator = circuit.simulator(temperature=25, nominal_temperature=25)
@@ -150,7 +151,7 @@ for t, v in down_times_low:
 for t, v in down_times_high:
     ax.plot(t, v, 'bs', label='V(out) down at 0.95*V_dd')  # 黄色表示输出上升到0.99*V_dd
 
-plt.title('NAND Gate Transient Analysis')
+plt.title(f'{gate} Gate Transient Analysis')
 plt.xlabel('Time [s]')
 plt.ylabel('Voltage [V]')
 plt.legend()
