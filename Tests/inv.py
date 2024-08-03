@@ -10,8 +10,8 @@ circuit = Circuit('INV')
 gate = 'INVX1'
 
 # 包含 SPICE 模型库
-circuit.include('/home/yaohui/Research/PySpice/Libs/cells.sp')
-circuit.include('/home/yaohui/Research/PySpice/Libs/gpdk45nm.m')
+circuit.include('/home/yaohui/Research/Cell_Simulation/Libs/cells.sp')
+circuit.include('/home/yaohui/Research/Cell_Simulation/Libs/gpdk45nm.m')
 
 V_dd  = 1.1 @u_V
 C_out = 0.1 @u_pF

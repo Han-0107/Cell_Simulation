@@ -7,11 +7,11 @@ import numpy as np
 
 # 创建电路
 circuit = Circuit('AND')
-gate = 'AND2X1'
+gate = 'AND2x2_ASAP7_6t_SRAM'
 
 # 包含 SPICE 模型库
-circuit.include('/home/yaohui/Research/PySpice/Libs/cells.sp')
-circuit.include('/home/yaohui/Research/PySpice/Libs/gpdk45nm.m')
+circuit.include('/home/yaohui/Research/Cell_Simulation/Libs/cells.sp')
+circuit.include('/home/yaohui/Research/Cell_Simulation/Libs/gpdk45nm.m')
 
 V_dd  = 1.1 @u_V
 C_out = 0.1 @u_pF
@@ -61,7 +61,7 @@ circuit.PieceWiseLinearVoltageSource('Vpulse', 'a', circuit.gnd,
 circuit.VoltageSource(3, 'b', circuit.gnd, V_dd)
 
 # 定义门
-circuit.X(1, gate, 'y', 'a', 'b', 'VDD', 'VSS')
+circuit.X(1, gate, 'a', 'b', 'VDD', 'VSS', 'y')
 
 # 进行瞬态仿真
 simulator = circuit.simulator(temperature=25, nominal_temperature=25)

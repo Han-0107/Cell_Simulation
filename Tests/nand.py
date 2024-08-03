@@ -10,12 +10,12 @@ circuit = Circuit('NAND')
 gate = 'NAND2X1'
 
 # 包含 SPICE 模型库
-circuit.include('/home/yaohui/Research/PySpice/Libs/cells.sp')
-circuit.include('/home/yaohui/Research/PySpice/Libs/gpdk45nm.m')
+circuit.include('/home/yaohui/Research/Cell_Simulation/Libs/cells.sp')
+circuit.include('/home/yaohui/Research/Cell_Simulation/Libs/gpdk45nm.m')
 
 V_dd  = 1.1 @u_V
 Cap_load = 0.1 @u_pF
-T_swi = 5 @ u_ns
+T_swi = 0.06 @ u_ns
 
 # 定义电源电压
 circuit.V(1, 'VDD', circuit.gnd, V_dd)
@@ -39,32 +39,36 @@ V_9_down = 0.1*V_dd
 T_pulse = 5 @ u_ns
 T_period = 20 @ u_ns
 
-circuit.PieceWiseLinearVoltageSource('Vpulse', 'a', circuit.gnd,
-                                        values=[
-                                                (0, 0), 
-                                                (0.1*T_swi, V_1_up),
-                                                (0.3*T_swi, V_3_up),
-                                                (0.5*T_swi, V_5_up),
-                                                (0.7*T_swi, V_7_up),
-                                                (0.9*T_swi, V_9_up),
-                                                (T_swi, V_dd), 
-                                                (T_swi+T_pulse, V_dd), 
-                                                (1.1*T_swi+T_pulse, V_1_down),
-                                                (1.3*T_swi+T_pulse, V_3_down),
-                                                (1.5*T_swi+T_pulse, V_5_down),
-                                                (1.7*T_swi+T_pulse, V_7_down),
-                                                (1.9*T_swi+T_pulse, V_9_down),                                                
-                                                (2*T_swi+T_pulse, 0), 
-                                                (2*T_swi+T_period, 0)
-                                                ]
-                                    )
+# circuit.PieceWiseLinearVoltageSource('Vpulse', 'a', circuit.gnd,
+#                                         values=[
+#                                                 (0, 0), 
+#                                                 (0.1*T_swi, V_1_up),
+#                                                 (0.3*T_swi, V_3_up),
+#                                                 (0.5*T_swi, V_5_up),
+#                                                 (0.7*T_swi, V_7_up),
+#                                                 (0.9*T_swi, V_9_up),
+#                                                 (T_swi, V_dd), 
+#                                                 (T_swi+T_pulse, V_dd), 
+#                                                 (1.1*T_swi+T_pulse, V_1_down),
+#                                                 (1.3*T_swi+T_pulse, V_3_down),
+#                                                 (1.5*T_swi+T_pulse, V_5_down),
+#                                                 (1.7*T_swi+T_pulse, V_7_down),
+#                                                 (1.9*T_swi+T_pulse, V_9_down),                                                
+#                                                 (2*T_swi+T_pulse, 0), 
+#                                                 (2*T_swi+T_period, 0)
+#                                                 ]
+#                                     )
+circuit.PulseVoltageSource('VIN_AN', 'a', circuit.gnd,
+                           initial_value=0@u_V, pulsed_value=V_dd,
+                           delay_time=0@u_ns, rise_time=T_swi, fall_time=T_swi,
+                           pulse_width=5@u_ns, period=20@u_ns)
 circuit.VoltageSource(3, 'b', circuit.gnd, V_dd)
 
 # 定义门
 circuit.X(1, gate, 'y', 'a', 'b', 'VDD', 'VSS')
 
 # 进行瞬态仿真
-simulator = circuit.simulator(temperature=25, nominal_temperature=25)
+simulator = circuit.simulator(temperature=27, nominal_temperature=27)
 analysis = simulator.transient(step_time=0.001 @u_ns, end_time=25 @u_ns)
 
 # 计算延时
