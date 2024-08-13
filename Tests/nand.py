@@ -69,7 +69,7 @@ circuit.X(1, gate, 'y', 'a', 'b', 'VDD', 'VSS')
 
 # 进行瞬态仿真
 simulator = circuit.simulator(temperature=27, nominal_temperature=27)
-analysis = simulator.transient(step_time=0.001 @u_ns, end_time=25 @u_ns)
+analysis = simulator.transient(step_time=0.0001 @u_ns, end_time=15 @u_ns)
 
 # 计算延时
 def calculate_propagation_delay(time, in_signal, out_signal, threshold):
